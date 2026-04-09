@@ -7,8 +7,8 @@ export const defaultPortfolioContent: PortfolioContent = {
     headline: 'I turn business data into strategy leaders can act on immediately.',
     intro:
       'From SQL warehouse architecture to executive Tableau dashboards, I design analytics systems that make decision-making faster, clearer, and measurable.',
-    contactEmail: 'temilade.somade@example.com',
-    linkedInUrl: 'https://www.linkedin.com/in/temilade-somade/',
+    contactEmail: 'somadetemilade16@gmail.com',
+    linkedInUrl: 'https://www.linkedin.com/in/somade-temilade-8b95a8236?utm_source=share_via&utm_content=profile&utm_medium=member_android',
     tableauProfileUrl: 'https://public.tableau.com/app/profile/temilade.somade/vizzes',
   },
   skills: [

@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 
+import { PortfolioContentProvider } from './components/portfolio-content-provider'
 import { SiteLayout } from './components/site-layout'
 import { ScrollToTop } from './components/scroll-to-top'
 import { HomePage } from './pages/home-page'
@@ -9,15 +10,17 @@ import { StudioPage } from './pages/studio-page'
 
 function App() {
   return (
-    <SiteLayout>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/projects/:slug" element={<ProjectPage />} />
-        <Route path="/studio" element={<StudioPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </SiteLayout>
+    <PortfolioContentProvider>
+      <SiteLayout>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/projects/:slug" element={<ProjectPage />} />
+          <Route path="/slimtemi" element={<StudioPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </SiteLayout>
+    </PortfolioContentProvider>
   )
 }
 

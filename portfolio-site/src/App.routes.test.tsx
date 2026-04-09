@@ -31,9 +31,6 @@ describe('portfolio routing and conversion', () => {
     expect(
       screen.getByRole('heading', { name: /Core Skills/i }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: /Open Content Studio/i }),
-    ).toBeInTheDocument()
   })
 
   it('navigates to a project case study from homepage', async () => {

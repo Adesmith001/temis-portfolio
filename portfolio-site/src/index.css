@@ -138,6 +138,26 @@ body {
   box-shadow: 0 0 14px var(--glow);
 }
 
+.studio-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(13, 20, 33, 0.82);
+  color: var(--ink);
+  padding: 0.72rem 0.78rem;
+  font-size: 0.9rem;
+  border-radius: 0;
+}
+
+.studio-input::placeholder {
+  color: #7f8db0;
+}
+
+.studio-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

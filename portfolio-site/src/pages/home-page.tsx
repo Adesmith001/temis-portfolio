@@ -1,14 +1,12 @@
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
-
-import { ProjectCard } from '../components/project-card'
-import type { Project } from '../types/portfolio'
 import { useRef } from 'react'
 
-interface HomePageProps {
-  projects: Project[]
-}
+import { ProjectCard } from '../components/project-card'
+import { usePortfolioContent } from '../components/portfolio-content-provider'
 
-export function HomePage({ projects }: HomePageProps) {
+export function HomePage() {
+  const { content } = usePortfolioContent()
+  const { profile, skills, projects } = content
   const reduceMotion = useReducedMotion()
   const previewRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
@@ -16,53 +14,41 @@ export function HomePage({ projects }: HomePageProps) {
     offset: ['start end', 'end start'],
   })
   const scale = useTransform(scrollYProgress, [0, 1], [0.98, 1.03])
-  const y = useTransform(scrollYProgress, [0, 1], [0, -14])
+  const y = useTransform(scrollYProgress, [0, 1], [0, -16])
 
   return (
     <>
       <section className="hero-frame">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 md:grid-cols-[1fr_1.1fr] md:items-end md:px-10 md:py-24">
+        <div className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-16 md:grid-cols-[1fr_1.08fr] md:items-end md:px-10 md:py-24">
           <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 28 }}
             animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+            transition={{ duration: 0.62, ease: 'easeOut' }}
           >
-            <p className="mb-5 text-xs uppercase tracking-[0.24em] text-[#b6c6e6]">
-              Data Analyst + BI Specialist
+            <p className="mb-5 text-xs uppercase tracking-[0.24em] text-[#c0cff0]">
+              {profile.role}
             </p>
-            <h1 className="font-serif text-4xl leading-tight text-(--ink) md:text-7xl">
-              Temilade Somade
+            <h1 className="font-serif text-4xl leading-[0.96] text-(--ink) md:text-7xl">
+              {profile.name}
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-[#b3c0da]">
-              I build analytics products that convert raw business data into clear,
-              decision-ready strategy.
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#b4c4e0]">
+              {profile.headline}
+            </p>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-(--muted)">
+              {profile.intro}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a className="cta" href="mailto:temilade.somade@example.com">
-                Contact for Opportunities
+              <a className="cta" href={`mailto:${profile.contactEmail}`}>
+                Contact
               </a>
               <a
                 className="link-chip"
-                href="https://public.tableau.com/app/profile/temilade.somade/vizzes"
+                href={profile.tableauProfileUrl}
                 rel="noreferrer"
                 target="_blank"
               >
                 Tableau Profile
               </a>
-            </div>
-            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
-              <div className="metric-tile p-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-(--muted)">Projects</p>
-                <p className="mt-2 font-serif text-2xl text-(--ink)">04</p>
-              </div>
-              <div className="metric-tile p-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-(--muted)">Dashboards</p>
-                <p className="mt-2 font-serif text-2xl text-(--ink)">02</p>
-              </div>
-              <div className="metric-tile p-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-(--muted)">Core Stack</p>
-                <p className="mt-2 font-serif text-2xl text-(--ink)">SQL + Tableau</p>
-              </div>
             </div>
           </motion.div>
 
@@ -70,7 +56,7 @@ export function HomePage({ projects }: HomePageProps) {
             className="surface-panel overflow-hidden"
             initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
             animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.08 }}
+            transition={{ duration: 0.74, ease: 'easeOut', delay: 0.09 }}
             style={reduceMotion ? undefined : { y }}
           >
             <img
@@ -85,16 +71,43 @@ export function HomePage({ projects }: HomePageProps) {
       <section className="mx-auto w-full max-w-6xl px-6 py-14 md:px-10">
         <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-(--muted)">
-              Selected Projects
-            </p>
+            <p className="text-xs uppercase tracking-[0.22em] text-(--muted)">Skill Stack</p>
+            <h2 className="mt-2 font-serif text-3xl text-(--ink) md:text-5xl">Core Skills</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-relaxed text-[#afbdd8]">
+            Technical depth and business storytelling aligned for real-world analytics impact.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {skills.map((category) => (
+            <article className="surface-panel p-5" key={category.id}>
+              <h3 className="font-serif text-2xl text-(--ink)">{category.title}</h3>
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {category.items.map((skillItem) => (
+                  <li
+                    className="border border-(--line) bg-[#101a2d] px-3 py-1 text-xs uppercase tracking-[0.08em] text-(--muted)"
+                    key={`${category.id}-${skillItem}`}
+                  >
+                    {skillItem}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:px-10">
+        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-(--muted)">Selected Work</p>
             <h2 className="mt-2 font-serif text-3xl text-(--ink) md:text-5xl">
-              Four End-to-End Case Studies
+              High-Impact Case Studies
             </h2>
           </div>
           <p className="max-w-xl text-sm leading-relaxed text-[#afbdd8]">
-            Warehouse engineering, advanced SQL analytics, and Tableau dashboard
-            systems designed for real business outcomes.
+            Warehouse engineering, advanced SQL analytics, and executive-grade dashboards designed
+            to drive decisions.
           </p>
         </div>
 
