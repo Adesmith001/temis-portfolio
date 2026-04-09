@@ -1,0 +1,11 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#11131A"/>
+  <rect x="120" y="140" width="960" height="500" rx="28" fill="#171A23" stroke="#2A2F3D"/>
+  <rect x="190" y="210" width="820" height="110" rx="16" fill="#A35A41" fill-opacity="0.18" stroke="#A35A41"/>
+  <rect x="190" y="350" width="820" height="110" rx="16" fill="#4D6C89" fill-opacity="0.2" stroke="#5E7D9A"/>
+  <rect x="190" y="490" width="820" height="80" rx="16" fill="#6F927A" fill-opacity="0.22" stroke="#81A48C"/>
+  <text x="230" y="274" fill="#F1E5DC" font-family="Arial" font-size="38">Bronze Layer · Raw ERP + CRM Ingestion</text>
+  <text x="230" y="414" fill="#D9E7F5" font-family="Arial" font-size="38">Silver Layer · Cleansed + Standardized</text>
+  <text x="230" y="544" fill="#DDF2E6" font-family="Arial" font-size="34">Gold Layer · Analytics-Ready Fact / Dimension Model</text>
+</svg>
+

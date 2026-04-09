@@ -1,0 +1,15 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#101217"/>
+  <rect x="96" y="96" width="1008" height="568" rx="32" fill="#171A22" stroke="#2A2F3A"/>
+  <rect x="164" y="170" width="872" height="76" rx="14" fill="#1F2430"/>
+  <rect x="164" y="276" width="592" height="96" rx="14" fill="#1F2430"/>
+  <rect x="782" y="276" width="254" height="96" rx="14" fill="#24403A"/>
+  <rect x="164" y="400" width="872" height="190" rx="20" fill="#1B202A"/>
+  <text x="198" y="218" fill="#E7D7CE" font-family="Arial" font-size="28">WITH monthly_performance AS (...)</text>
+  <text x="198" y="336" fill="#C8D4E3" font-family="Arial" font-size="28">RANK() OVER(PARTITION BY segment ORDER BY profit DESC)</text>
+  <text x="810" y="334" fill="#A8D1BE" font-family="Arial" font-size="22">YoY Trend</text>
+  <text x="810" y="360" fill="#A8D1BE" font-family="Arial" font-size="22">+20.4%</text>
+  <text x="198" y="468" fill="#E6EDF7" font-family="Arial" font-size="30">Advanced SQL Analytics for Decision Support</text>
+  <text x="198" y="516" fill="#9EA8B8" font-family="Arial" font-size="24">Customer Segmentation · Product Performance · KPI Tracking</text>
+</svg>
+
