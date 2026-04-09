@@ -41,7 +41,7 @@ export function SiteLayout({ children }: SiteLayoutProps) {
       <footer className="border-t border-(--line) bg-[#070d18]/95">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between md:px-10">
           <p className="text-sm text-(--muted)">
-            Data Analyst & BI Specialist portfolio. Built for recruiters and client opportunities.
+            Data Analyst & BI Specialist portfolio.
           </p>
           <div className="flex flex-wrap gap-3">
             <a
