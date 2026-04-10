@@ -3,6 +3,8 @@ import { list, put } from '@vercel/blob'
 import { defaultPortfolioContent } from '../src/data/portfolio-content'
 import type { PortfolioContent } from '../src/types/portfolio'
 
+export const runtime = 'nodejs'
+
 const CONTENT_BLOB_PATH = 'portfolio-content/latest.json'
 
 function isPortfolioContent(input: unknown): input is PortfolioContent {
@@ -16,16 +18,28 @@ function isPortfolioContent(input: unknown): input is PortfolioContent {
   )
 }
 
-function withNoStoreHeaders(res: {
-  setHeader: (name: string, value: string) => void
-}) {
-  res.setHeader('Cache-Control', 'no-store')
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+  })
 }
 
-async function readSharedContent(): Promise<PortfolioContent | null> {
-  const { blobs } = await list({ prefix: CONTENT_BLOB_PATH, limit: 1 })
-  const targetBlob = blobs.find((blob) => blob.pathname === CONTENT_BLOB_PATH)
+function getBlobToken() {
+  return process.env.BLOB_READ_WRITE_TOKEN?.trim()
+}
 
+async function readSharedContent(token: string): Promise<PortfolioContent | null> {
+  const { blobs } = await list({
+    token,
+    prefix: CONTENT_BLOB_PATH,
+    limit: 1,
+  })
+
+  const targetBlob = blobs.find((blob) => blob.pathname === CONTENT_BLOB_PATH)
   if (!targetBlob) {
     return null
   }
@@ -43,8 +57,9 @@ async function readSharedContent(): Promise<PortfolioContent | null> {
   return payload
 }
 
-async function writeSharedContent(content: PortfolioContent) {
+async function writeSharedContent(content: PortfolioContent, token: string) {
   await put(CONTENT_BLOB_PATH, JSON.stringify(content), {
+    token,
     access: 'public',
     addRandomSuffix: false,
     contentType: 'application/json',
@@ -52,51 +67,80 @@ async function writeSharedContent(content: PortfolioContent) {
   })
 }
 
-export default async function handler(
-  req: { body?: unknown; method?: string },
-  res: {
-    status: (statusCode: number) => { json: (body: unknown) => void }
-    setHeader: (name: string, value: string) => void
-  },
-) {
-  withNoStoreHeaders(res)
+export async function GET() {
+  const token = getBlobToken()
 
-  if (req.method === 'GET') {
-    try {
-      const sharedContent = await readSharedContent()
-      return res
-        .status(200)
-        .json({ content: sharedContent ?? defaultPortfolioContent })
-    } catch {
-      return res.status(200).json({ content: defaultPortfolioContent })
-    }
+  if (!token) {
+    return json({
+      content: defaultPortfolioContent,
+      storage: 'default',
+      warning: 'BLOB_READ_WRITE_TOKEN is missing. Shared persistence is disabled.',
+    })
   }
 
-  if (req.method === 'POST') {
-    let payload: unknown
-    try {
-      payload =
-        typeof req.body === 'string'
-          ? (JSON.parse(req.body) as unknown)
-          : req.body
-    } catch {
-      return res.status(400).json({ error: 'Request body must be valid JSON.' })
-    }
-
-    if (!isPortfolioContent(payload)) {
-      return res.status(400).json({ error: 'Invalid portfolio content payload.' })
-    }
-
-    try {
-      await writeSharedContent(payload)
-      return res.status(200).json({ content: payload })
-    } catch {
-      return res.status(500).json({
-        error:
-          'Unable to persist shared content. Configure Vercel Blob for this project.',
-      })
-    }
+  try {
+    const sharedContent = await readSharedContent(token)
+    return json({
+      content: sharedContent ?? defaultPortfolioContent,
+      storage: sharedContent ? 'blob' : 'default',
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return json({
+      content: defaultPortfolioContent,
+      storage: 'default',
+      warning: `Blob read failed: ${message}`,
+    })
   }
-
-  return res.status(405).json({ error: 'Method not allowed.' })
 }
+
+export async function POST(request: Request) {
+  const token = getBlobToken()
+
+  if (!token) {
+    return json(
+      {
+        error:
+          'Shared storage is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel project environment variables.',
+      },
+      503,
+    )
+  }
+
+  let payload: unknown
+  try {
+    payload = (await request.json()) as unknown
+  } catch {
+    return json({ error: 'Request body must be valid JSON.' }, 400)
+  }
+
+  if (!isPortfolioContent(payload)) {
+    return json({ error: 'Invalid portfolio content payload.' }, 400)
+  }
+
+  try {
+    await writeSharedContent(payload, token)
+    return json({ content: payload, storage: 'blob' })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return json(
+      {
+        error: `Unable to persist shared content: ${message}`,
+      },
+      500,
+    )
+  }
+}
+
+export default async function handler(request: Request) {
+  if (request.method === 'GET') {
+    return GET()
+  }
+
+  if (request.method === 'POST') {
+    return POST(request)
+  }
+
+  return json({ error: 'Method not allowed.' }, 405)
+}
+
