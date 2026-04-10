@@ -1,14 +1,38 @@
-import { useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 
 import { usePortfolioContent } from '../components/portfolio-content-provider'
 import { defaultPortfolioContent } from '../data/portfolio-content'
 import type { PortfolioContent, Project, ProjectType } from '../types/portfolio'
 
-function createBlankProject(index: number): Project {
+const projectTypeOptions: Array<{ value: ProjectType; label: string }> = [
+  { value: 'sql', label: 'SQL' },
+  { value: 'tableau', label: 'Tableau' },
+  { value: 'powerbi', label: 'Power BI' },
+  { value: 'python', label: 'Python' },
+  { value: 'excel', label: 'Excel' },
+  { value: 'other', label: 'Other' },
+]
+
+function parseCommaSeparated(value: string) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function createBlankProject(index: number, projectType: ProjectType = 'sql'): Project {
   return {
     slug: `new-project-${index}`,
-    projectType: 'sql',
+    projectType,
     title: 'New Project Title',
     summary: 'Short summary of the project outcome and value.',
     role: 'Data Analyst',
@@ -27,12 +51,70 @@ function createBlankProject(index: number): Project {
   }
 }
 
+interface StudioModalProps {
+  children: ReactNode
+  onClose: () => void
+  title: string
+}
+
+function StudioModal({ children, onClose, title }: StudioModalProps) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-80 flex items-center justify-center bg-[#050913]/84 p-5 backdrop-blur-sm"
+      role="dialog"
+    >
+      <div className="surface-panel w-full max-w-2xl p-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="font-serif text-3xl text-(--ink)">{title}</h2>
+          <button className="link-chip cursor-pointer" onClick={onClose} type="button">
+            Close
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function StudioPage() {
   const { content, updateContent, resetContent } = usePortfolioContent()
   const [draft, setDraft] = useState<PortfolioContent>(content)
   const [status, setStatus] = useState<string>('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false)
+  const [newSkillTitle, setNewSkillTitle] = useState('')
+  const [newSkillItems, setNewSkillItems] = useState('')
+
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [newProjectTitle, setNewProjectTitle] = useState('')
+  const [newProjectSlug, setNewProjectSlug] = useState('')
+  const [newProjectSummary, setNewProjectSummary] = useState('')
+  const [newProjectType, setNewProjectType] = useState<ProjectType>('sql')
+  const [newProjectTools, setNewProjectTools] = useState('')
+  const [newProjectTags, setNewProjectTags] = useState('')
+
+  useEffect(() => {
+    setDraft(content)
+  }, [content])
 
   const jsonPreview = useMemo(() => JSON.stringify(draft, null, 2), [draft])
+
+  const publishContent = async (next: PortfolioContent, successMessage: string) => {
+    setDraft(next)
+    setIsSaving(true)
+    try {
+      await updateContent(next)
+      setStatus(successMessage)
+    } catch {
+      setStatus(
+        'Could not publish to shared storage right now. Keep your edits, then try Save Changes again.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const setProfileField = (field: keyof PortfolioContent['profile'], value: string) => {
     setDraft((prev) => ({
@@ -54,26 +136,13 @@ export function StudioPage() {
   }
 
   const setSkillItems = (index: number, value: string) => {
-    const parsed = value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
+    const parsed = parseCommaSeparated(value)
 
     setDraft((prev) => ({
       ...prev,
       skills: prev.skills.map((skill, skillIndex) =>
         skillIndex === index ? { ...skill, items: parsed } : skill,
       ),
-    }))
-  }
-
-  const addSkillCategory = () => {
-    setDraft((prev) => ({
-      ...prev,
-      skills: [
-        ...prev.skills,
-        { id: `skill-${Date.now()}`, title: 'New Skill Category', items: ['New Skill'] },
-      ],
     }))
   }
 
@@ -104,13 +173,6 @@ export function StudioPage() {
     }))
   }
 
-  const addProject = () => {
-    setDraft((prev) => ({
-      ...prev,
-      projects: [...prev.projects, createBlankProject(prev.projects.length + 1)],
-    }))
-  }
-
   const removeProject = (index: number) => {
     setDraft((prev) => ({
       ...prev,
@@ -118,15 +180,24 @@ export function StudioPage() {
     }))
   }
 
-  const saveChanges = () => {
-    updateContent(draft)
-    setStatus('Changes saved locally. The portfolio now uses this updated content.')
+  const saveChanges = async () => {
+    await publishContent(
+      draft,
+      'Changes saved and published. All users now receive the latest portfolio content.',
+    )
   }
 
-  const resetToDefaults = () => {
-    resetContent()
+  const resetToDefaults = async () => {
+    setIsSaving(true)
     setDraft(defaultPortfolioContent)
-    setStatus('Reset to default content.')
+    try {
+      await resetContent()
+      setStatus('Reset to default content and published to all users.')
+    } catch {
+      setStatus('Reset locally, but publishing failed. Click Save Changes to retry.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const downloadJson = () => {
@@ -163,8 +234,80 @@ export function StudioPage() {
     reader.readAsText(file)
   }
 
+  const openSkillModal = () => {
+    setNewSkillTitle('')
+    setNewSkillItems('')
+    setIsSkillModalOpen(true)
+  }
+
+  const saveSkillCategory = async () => {
+    const title = newSkillTitle.trim()
+    if (!title) {
+      setStatus('Please enter a category title before saving.')
+      return
+    }
+
+    const items = parseCommaSeparated(newSkillItems)
+    const next: PortfolioContent = {
+      ...draft,
+      skills: [
+        ...draft.skills,
+        {
+          id: `skill-${Date.now()}`,
+          title,
+          items: items.length > 0 ? items : ['New Skill'],
+        },
+      ],
+    }
+
+    setIsSkillModalOpen(false)
+    await publishContent(next, `Added "${title}" and published it for all users.`)
+  }
+
+  const openProjectModal = () => {
+    setNewProjectTitle('')
+    setNewProjectSlug('')
+    setNewProjectSummary('')
+    setNewProjectType('sql')
+    setNewProjectTools('')
+    setNewProjectTags('')
+    setIsProjectModalOpen(true)
+  }
+
+  const saveProject = async () => {
+    const title = newProjectTitle.trim()
+    if (!title) {
+      setStatus('Please enter a project title before saving.')
+      return
+    }
+
+    const base = createBlankProject(draft.projects.length + 1, newProjectType)
+    const slug = newProjectSlug.trim() || slugify(title) || base.slug
+    const tools = parseCommaSeparated(newProjectTools)
+    const tags = parseCommaSeparated(newProjectTags)
+    const summary = newProjectSummary.trim()
+
+    const nextProject: Project = {
+      ...base,
+      title,
+      slug,
+      projectType: newProjectType,
+      summary: summary || base.summary,
+      tools: tools.length > 0 ? tools : base.tools,
+      tags: tags.length > 0 ? tags : base.tags,
+    }
+
+    const next: PortfolioContent = {
+      ...draft,
+      projects: [...draft.projects, nextProject],
+    }
+
+    setIsProjectModalOpen(false)
+    await publishContent(next, `Added "${title}" and published it for all users.`)
+  }
+
   return (
-    <section className="mx-auto w-full matext-(--ink)2 md:px-10 md:py-16">
+    <section className="mx-auto w-full max-w-6xl px-6 py-12 text-(--ink) md:px-10 md:py-16">
       <h1 className="font-serif text-4xl text-(--ink) md:text-6xl">Content Studio</h1>
       <p className="mt-4 max-w-3xl text-sm text-[#afbdd8]">
         Edit profile details, skills, and project list here. Save changes to apply instantly to the
@@ -172,10 +315,10 @@ export function StudioPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button className="cta cursor-pointer" onClick={saveChanges} type="button">
-          Save Changes
+        <button className="cta cursor-pointer disabled:opacity-60" disabled={isSaving} onClick={saveChanges} type="button">
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </button>
-        <button className="link-chip cursor-pointer" onClick={resetToDefaults} type="button">
+        <button className="link-chip cursor-pointer disabled:opacity-60" disabled={isSaving} onClick={resetToDefaults} type="button">
           Reset Defaults
         </button>
         <button className="link-chip cursor-pointer" onClick={downloadJson} type="button">
@@ -235,7 +378,7 @@ export function StudioPage() {
       <article className="surface-panel mt-8 p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-serif text-3xl text-(--ink)">Skills</h2>
-          <button className="link-chip cursor-pointer" onClick={addSkillCategory} type="button">
+          <button className="link-chip cursor-pointer" onClick={openSkillModal} type="button">
             Add Skill Category
           </button>
         </div>
@@ -268,7 +411,7 @@ export function StudioPage() {
       <article className="surface-panel mt-8 p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-serif text-3xl text-(--ink)">Projects</h2>
-          <button className="link-chip cursor-pointer" onClick={addProject} type="button">
+          <button className="link-chip cursor-pointer" onClick={openProjectModal} type="button">
             Add Project
           </button>
         </div>
@@ -296,8 +439,11 @@ export function StudioPage() {
                 onChange={(event) => setProjectField(index, 'projectType', event.target.value)}
                 value={project.projectType}
               >
-                <option value="sql">SQL</option>
-                <option value="tableau">Tableau</option>
+                {projectTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <button
                 className="link-chip cursor-pointer"
@@ -310,6 +456,146 @@ export function StudioPage() {
           ))}
         </div>
       </article>
+
+      {isSkillModalOpen ? (
+        <StudioModal onClose={() => setIsSkillModalOpen(false)} title="Add Skill Category">
+          <div className="grid gap-4">
+            <label className="text-sm text-(--muted)" htmlFor="new-skill-title">
+              Category Title
+            </label>
+            <input
+              className="studio-input"
+              id="new-skill-title"
+              onChange={(event) => setNewSkillTitle(event.target.value)}
+              placeholder="e.g. Cloud Analytics"
+              value={newSkillTitle}
+            />
+
+            <label className="text-sm text-(--muted)" htmlFor="new-skill-items">
+              Skills (comma separated)
+            </label>
+            <textarea
+              className="studio-input"
+              id="new-skill-items"
+              onChange={(event) => setNewSkillItems(event.target.value)}
+              placeholder="e.g. BigQuery, dbt, Airflow"
+              rows={3}
+              value={newSkillItems}
+            />
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button className="cta cursor-pointer" onClick={saveSkillCategory} type="button">
+                Save Skill Category
+              </button>
+              <button
+                className="link-chip cursor-pointer"
+                onClick={() => setIsSkillModalOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </StudioModal>
+      ) : null}
+
+      {isProjectModalOpen ? (
+        <StudioModal onClose={() => setIsProjectModalOpen(false)} title="Add Project">
+          <div className="grid gap-4">
+            <label className="text-sm text-(--muted)" htmlFor="new-project-title">
+              Project Title
+            </label>
+            <input
+              className="studio-input"
+              id="new-project-title"
+              onChange={(event) => {
+                const nextTitle = event.target.value
+                setNewProjectTitle(nextTitle)
+                if (!newProjectSlug) {
+                  setNewProjectSlug(slugify(nextTitle))
+                }
+              }}
+              placeholder="Project title"
+              value={newProjectTitle}
+            />
+
+            <label className="text-sm text-(--muted)" htmlFor="new-project-slug">
+              Slug
+            </label>
+            <input
+              className="studio-input"
+              id="new-project-slug"
+              onChange={(event) => setNewProjectSlug(event.target.value)}
+              placeholder="project-slug"
+              value={newProjectSlug}
+            />
+
+            <label className="text-sm text-(--muted)" htmlFor="new-project-summary">
+              Summary
+            </label>
+            <textarea
+              className="studio-input"
+              id="new-project-summary"
+              onChange={(event) => setNewProjectSummary(event.target.value)}
+              placeholder="One short summary line"
+              rows={3}
+              value={newProjectSummary}
+            />
+
+            <label className="text-sm text-(--muted)" htmlFor="new-project-type">
+              Project Type
+            </label>
+            <select
+              className="studio-input"
+              id="new-project-type"
+              onChange={(event) => setNewProjectType(event.target.value as ProjectType)}
+              value={newProjectType}
+            >
+              {projectTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <label className="text-sm text-(--muted)" htmlFor="new-project-tools">
+              Tools (comma separated)
+            </label>
+            <input
+              className="studio-input"
+              id="new-project-tools"
+              onChange={(event) => setNewProjectTools(event.target.value)}
+              placeholder="e.g. SQL, Python, Power BI"
+              value={newProjectTools}
+            />
+
+            <label className="text-sm text-(--muted)" htmlFor="new-project-tags">
+              Tags (comma separated)
+            </label>
+            <input
+              className="studio-input"
+              id="new-project-tags"
+              onChange={(event) => setNewProjectTags(event.target.value)}
+              placeholder="e.g. Forecasting, KPI, Automation"
+              value={newProjectTags}
+            />
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button className="cta cursor-pointer" onClick={saveProject} type="button">
+                Save Project
+              </button>
+              <button
+                className="link-chip cursor-pointer"
+                onClick={() => setIsProjectModalOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </StudioModal>
+      ) : null}
     </section>
   )
 }
+

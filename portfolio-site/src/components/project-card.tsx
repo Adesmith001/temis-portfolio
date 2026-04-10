@@ -10,6 +10,14 @@ interface ProjectCardProps {
 export function ProjectCard({ project }: ProjectCardProps) {
   const reduceMotion = useReducedMotion()
   const caseStudyLabel = `View Case Study: ${project.title}`
+  const projectTypeLabels: Record<Project['projectType'], string> = {
+    sql: 'SQL Analytics Project',
+    tableau: 'Tableau Dashboard',
+    powerbi: 'Power BI Dashboard',
+    python: 'Python Analytics Project',
+    excel: 'Excel Analytics Project',
+    other: 'Analytics Project',
+  }
 
   return (
     <Link
@@ -36,7 +44,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         <div className="space-y-4 p-5 md:p-6">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-[var(--muted)]">
             <span className="neon-dot" />
-            {project.projectType === 'sql' ? 'SQL Analytics Project' : 'Tableau Dashboard'}
+            {projectTypeLabels[project.projectType]}
           </p>
           <h3 className="font-serif text-xl leading-tight text-[var(--ink)]">{project.title}</h3>
           <p className="text-sm leading-relaxed text-[#b5c3de]">{project.summary}</p>

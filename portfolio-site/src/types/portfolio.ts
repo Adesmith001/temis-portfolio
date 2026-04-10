@@ -1,4 +1,4 @@
-export type ProjectType = 'sql' | 'tableau'
+export type ProjectType = 'sql' | 'tableau' | 'powerbi' | 'python' | 'excel' | 'other'
 
 export type MetricTrend = 'up' | 'down' | 'flat'
 

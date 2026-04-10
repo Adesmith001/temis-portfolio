@@ -1,16 +1,16 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { defaultPortfolioContent } from '../data/portfolio-content'
 import type { PortfolioContent } from '../types/portfolio'
 
-const STORAGE_KEY = 'temilade-portfolio-content-v1'
+const CONTENT_ENDPOINT = '/api/portfolio-content'
 
 interface PortfolioContentContextValue {
   content: PortfolioContent
-  updateContent: (next: PortfolioContent) => void
-  resetContent: () => void
+  updateContent: (next: PortfolioContent) => Promise<void>
+  resetContent: () => Promise<void>
 }
 
 const PortfolioContentContext = createContext<PortfolioContentContextValue | null>(null)
@@ -19,41 +19,101 @@ interface PortfolioContentProviderProps {
   children: ReactNode
 }
 
-function loadContent(): PortfolioContent {
-  if (typeof window === 'undefined') {
-    return defaultPortfolioContent
+function isPortfolioContent(input: unknown): input is PortfolioContent {
+  if (!input || typeof input !== 'object') {
+    return false
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    return defaultPortfolioContent
+  const value = input as Partial<PortfolioContent>
+  return Boolean(
+    value.profile && Array.isArray(value.projects) && Array.isArray(value.skills),
+  )
+}
+
+function parseContentPayload(input: unknown): PortfolioContent | null {
+  if (!input || typeof input !== 'object') {
+    return null
   }
 
-  try {
-    const parsed = JSON.parse(raw) as PortfolioContent
-    if (!parsed.profile || !Array.isArray(parsed.projects) || !Array.isArray(parsed.skills)) {
-      return defaultPortfolioContent
-    }
-    return parsed
-  } catch {
-    return defaultPortfolioContent
+  const payload = input as { content?: unknown }
+  if (!isPortfolioContent(payload.content)) {
+    return null
   }
+
+  return payload.content
+}
+
+async function fetchSharedContent(): Promise<PortfolioContent | null> {
+  const response = await fetch(CONTENT_ENDPOINT, { cache: 'no-store' })
+  if (!response.ok) {
+    return null
+  }
+
+  const payload = (await response.json()) as unknown
+  return parseContentPayload(payload)
+}
+
+async function saveSharedContent(next: PortfolioContent): Promise<PortfolioContent | null> {
+  const response = await fetch(CONTENT_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(next),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to save content (${response.status})`)
+  }
+
+  const payload = (await response.json()) as unknown
+  return parseContentPayload(payload)
 }
 
 export function PortfolioContentProvider({ children }: PortfolioContentProviderProps) {
-  const [content, setContent] = useState<PortfolioContent>(() => loadContent())
+  const [content, setContent] = useState<PortfolioContent>(defaultPortfolioContent)
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(content))
-  }, [content])
+    let isMounted = true
+
+    const load = async () => {
+      try {
+        const remoteContent = await fetchSharedContent()
+        if (isMounted && remoteContent) {
+          setContent(remoteContent)
+        }
+      } catch {
+        // Default content remains in place if shared content is unavailable.
+      }
+    }
+
+    void load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const updateContent = useCallback(async (next: PortfolioContent) => {
+    setContent(next)
+
+    const persisted = await saveSharedContent(next)
+    if (persisted) {
+      setContent(persisted)
+    }
+  }, [])
+
+  const resetContent = useCallback(async () => {
+    await updateContent(defaultPortfolioContent)
+  }, [updateContent])
 
   const value = useMemo(
     () => ({
       content,
-      updateContent: (next: PortfolioContent) => setContent(next),
-      resetContent: () => setContent(defaultPortfolioContent),
+      updateContent,
+      resetContent,
     }),
-    [content],
+    [content, resetContent, updateContent],
   )
 
   return (
@@ -72,3 +132,4 @@ export function usePortfolioContent() {
 
   return context
 }
+

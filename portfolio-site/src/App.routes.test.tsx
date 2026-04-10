@@ -63,7 +63,7 @@ describe('portfolio routing and conversion', () => {
   })
 
   it('renders content studio for self-serve profile updates', () => {
-    renderWithRoute('/studio')
+    renderWithRoute('/slimtemi')
 
     expect(screen.getByRole('heading', { name: /Content Studio/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Add Project/i })).toBeInTheDocument()
